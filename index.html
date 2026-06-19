@@ -1,0 +1,719 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+<title>How Vercel + GitHub Work Together</title>
+<link rel="preconnect" href="https://fonts.googleapis.com"/>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;500;600&family=Syne:wght@700;800&display=swap" rel="stylesheet"/>
+<style>
+  :root {
+    --bg: #0A0A0F;
+    --bg2: #111118;
+    --bg3: #1A1A24;
+    --border: rgba(255,255,255,0.08);
+    --border-bright: rgba(255,255,255,0.15);
+    --white: #FFFFFF;
+    --off: #A0A0B8;
+    --dim: #60607A;
+    --vercel: #FFFFFF;
+    --github: #E8E8E8;
+    --green: #00D084;
+    --green-dim: rgba(0,208,132,0.12);
+    --blue: #4D9EFF;
+    --blue-dim: rgba(77,158,255,0.12);
+    --purple: #A855F7;
+    --purple-dim: rgba(168,85,247,0.12);
+    --amber: #F59E0B;
+    --amber-dim: rgba(245,158,11,0.12);
+    --red: #FF4D4D;
+  }
+
+  * { margin:0; padding:0; box-sizing:border-box; }
+  html { scroll-behavior:smooth; }
+  body { background:var(--bg); color:var(--white); font-family:'Inter',sans-serif; overflow-x:hidden; }
+
+  /* ── HERO ── */
+  .hero {
+    min-height: 100vh;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    text-align: center;
+    padding: 60px 24px;
+    position: relative;
+    overflow: hidden;
+  }
+
+  .hero-grid {
+    position: absolute; inset: 0;
+    background-image:
+      linear-gradient(rgba(255,255,255,0.03) 1px, transparent 1px),
+      linear-gradient(90deg, rgba(255,255,255,0.03) 1px, transparent 1px);
+    background-size: 60px 60px;
+    mask-image: radial-gradient(ellipse 80% 60% at 50% 50%, black 40%, transparent 100%);
+  }
+
+  .hero-glow {
+    position: absolute;
+    width: 600px; height: 600px;
+    background: radial-gradient(circle, rgba(77,158,255,0.08) 0%, transparent 70%);
+    top: 50%; left: 50%; transform: translate(-50%,-50%);
+    pointer-events: none;
+  }
+
+  .hero-badge {
+    display: inline-flex; align-items: center; gap: 8px;
+    background: rgba(255,255,255,0.06); border: 1px solid var(--border-bright);
+    color: var(--off); padding: 8px 18px; border-radius: 999px;
+    font-size: 13px; font-weight: 500; margin-bottom: 32px;
+    position: relative; z-index: 1;
+  }
+  .badge-dot { width:7px; height:7px; background:var(--green); border-radius:50%; animation: pulse 2s infinite; }
+  @keyframes pulse { 0%,100%{opacity:1;transform:scale(1)} 50%{opacity:.5;transform:scale(1.3)} }
+
+  .hero h1 {
+    font-family: 'Syne', sans-serif;
+    font-size: clamp(36px, 7vw, 80px);
+    font-weight: 800;
+    line-height: 1.05;
+    letter-spacing: -2px;
+    margin-bottom: 24px;
+    position: relative; z-index: 1;
+  }
+  .hero h1 .line2 { color: var(--blue); }
+
+  .hero-sub {
+    font-size: clamp(15px, 2vw, 18px);
+    color: var(--off);
+    max-width: 520px;
+    line-height: 1.7;
+    margin-bottom: 48px;
+    position: relative; z-index: 1;
+  }
+
+  .hero-cta {
+    display: flex; gap: 12px; flex-wrap: wrap; justify-content: center;
+    position: relative; z-index: 1;
+  }
+  .btn-primary {
+    padding: 14px 28px; background: var(--white); color: #000;
+    border: none; border-radius: 10px; font-size: 15px; font-weight: 600;
+    cursor: pointer; transition: all .2s; font-family: 'Inter', sans-serif;
+  }
+  .btn-primary:hover { background: #E0E0E0; transform: translateY(-1px); }
+  .btn-ghost {
+    padding: 14px 28px; background: transparent; color: var(--white);
+    border: 1px solid var(--border-bright); border-radius: 10px;
+    font-size: 15px; font-weight: 500; cursor: pointer; transition: all .2s;
+    font-family: 'Inter', sans-serif;
+  }
+  .btn-ghost:hover { background: rgba(255,255,255,0.06); }
+
+  /* ── SECTION ── */
+  section { padding: 80px 24px; max-width: 1100px; margin: 0 auto; }
+  .section-label {
+    font-size: 11px; font-weight: 600; letter-spacing: 2px;
+    text-transform: uppercase; color: var(--blue); margin-bottom: 12px;
+  }
+  .section-title {
+    font-family: 'Syne', sans-serif; font-size: clamp(26px,4vw,42px);
+    font-weight: 800; letter-spacing: -1px; margin-bottom: 16px;
+  }
+  .section-sub { color: var(--off); font-size: 16px; line-height: 1.7; max-width: 560px; }
+
+  /* ── WHAT IS WHAT ── */
+  .two-cols { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; margin-top: 40px; }
+  .tool-card {
+    background: var(--bg2); border: 1px solid var(--border);
+    border-radius: 16px; padding: 32px; position: relative; overflow: hidden;
+    transition: border-color .2s;
+  }
+  .tool-card:hover { border-color: var(--border-bright); }
+  .tool-card::before {
+    content: ''; position: absolute; top: 0; left: 0; right: 0; height: 2px;
+  }
+  .tool-card.github::before { background: linear-gradient(90deg, #6e40c9, #4078c8); }
+  .tool-card.vercel::before { background: linear-gradient(90deg, #fff, #888); }
+  .tool-logo {
+    width: 48px; height: 48px; border-radius: 12px;
+    display: flex; align-items: center; justify-content: center;
+    font-size: 24px; margin-bottom: 20px;
+  }
+  .tool-logo.gh { background: rgba(110,64,201,0.15); }
+  .tool-logo.vc { background: rgba(255,255,255,0.08); }
+  .tool-name { font-family:'Syne',sans-serif; font-size: 22px; font-weight: 800; margin-bottom: 8px; }
+  .tool-role {
+    display: inline-block; padding: 4px 12px; border-radius: 999px;
+    font-size: 11px; font-weight: 600; letter-spacing: .5px;
+    text-transform: uppercase; margin-bottom: 16px;
+  }
+  .tool-role.gh { background: var(--purple-dim); color: var(--purple); }
+  .tool-role.vc { background: rgba(255,255,255,0.08); color: var(--off); }
+  .tool-desc { color: var(--off); font-size: 14px; line-height: 1.7; }
+  .tool-points { margin-top: 20px; display: flex; flex-direction: column; gap: 10px; }
+  .tool-point {
+    display: flex; align-items: flex-start; gap: 10px;
+    font-size: 13.5px; color: var(--off);
+  }
+  .tool-point .icon { flex-shrink:0; margin-top:1px; }
+
+  /* ── FLOW DIAGRAM ── */
+  .flow-section { background: var(--bg2); border-top: 1px solid var(--border); border-bottom: 1px solid var(--border); }
+  .flow-section > div { max-width: 1100px; margin: 0 auto; padding: 80px 24px; }
+
+  .flow-steps { display: flex; align-items: stretch; gap: 0; margin-top: 48px; position: relative; flex-wrap: wrap; }
+
+  .flow-step {
+    flex: 1; min-width: 180px;
+    background: var(--bg3); border: 1px solid var(--border);
+    border-radius: 16px; padding: 28px 24px;
+    position: relative; transition: all .3s; cursor: pointer;
+  }
+  .flow-step:hover { border-color: var(--border-bright); transform: translateY(-3px); }
+  .flow-step.active { border-color: var(--blue); background: rgba(77,158,255,0.05); }
+
+  .flow-arrow {
+    display: flex; align-items: center; padding: 0 8px; color: var(--dim);
+    font-size: 20px; flex-shrink: 0; align-self: center;
+  }
+
+  .step-num {
+    width: 32px; height: 32px; border-radius: 50%;
+    background: var(--bg); border: 1px solid var(--border-bright);
+    display: flex; align-items: center; justify-content: center;
+    font-size: 12px; font-weight: 700; color: var(--off);
+    margin-bottom: 16px; font-family: 'JetBrains Mono', monospace;
+  }
+  .flow-step.active .step-num { background: var(--blue); border-color: var(--blue); color: #fff; }
+
+  .step-icon { font-size: 28px; margin-bottom: 12px; }
+  .step-title { font-weight: 700; font-size: 15px; margin-bottom: 6px; }
+  .step-desc { font-size: 12.5px; color: var(--off); line-height: 1.6; }
+  .step-tag {
+    display: inline-block; margin-top: 12px; padding: 3px 10px;
+    border-radius: 999px; font-size: 10px; font-weight: 600;
+    text-transform: uppercase; letter-spacing: .5px;
+  }
+  .tag-you { background: var(--amber-dim); color: var(--amber); }
+  .tag-github { background: var(--purple-dim); color: var(--purple); }
+  .tag-vercel { background: rgba(255,255,255,0.08); color: var(--off); }
+  .tag-auto { background: var(--green-dim); color: var(--green); }
+
+  /* ── DETAIL PANEL ── */
+  .detail-panel {
+    margin-top: 24px; background: var(--bg3); border: 1px solid var(--blue);
+    border-radius: 16px; padding: 28px 32px;
+    display: none; animation: slideDown .25s ease-out;
+  }
+  .detail-panel.show { display: block; }
+  @keyframes slideDown { from{opacity:0;transform:translateY(-8px)} to{opacity:1;transform:translateY(0)} }
+  .detail-panel h4 { font-size: 16px; font-weight: 700; margin-bottom: 12px; color: var(--blue); }
+  .detail-panel p { font-size: 14px; color: var(--off); line-height: 1.7; }
+
+  /* ── TERMINAL ── */
+  .terminal-section { margin-top: 40px; }
+  .terminal {
+    background: #0D0D12; border: 1px solid var(--border);
+    border-radius: 14px; overflow: hidden; font-family: 'JetBrains Mono', monospace;
+  }
+  .terminal-bar {
+    background: var(--bg3); padding: 12px 16px;
+    display: flex; align-items: center; gap: 8px; border-bottom: 1px solid var(--border);
+  }
+  .dot { width:12px; height:12px; border-radius:50%; }
+  .dot.r { background:#FF5F56; } .dot.y { background:#FFBD2E; } .dot.g { background:#27C93F; }
+  .terminal-title { font-size: 12px; color: var(--dim); margin-left: 8px; font-family:'Inter',sans-serif; }
+  .terminal-body { padding: 24px; }
+  .t-line { display: flex; gap: 12px; margin-bottom: 8px; font-size: 13px; line-height: 1.6; }
+  .t-prompt { color: var(--green); flex-shrink: 0; }
+  .t-cmd { color: var(--white); }
+  .t-comment { color: var(--dim); font-style: italic; }
+  .t-output { color: var(--off); padding-left: 20px; margin-bottom: 8px; font-size: 12.5px; }
+  .t-success { color: var(--green); padding-left: 20px; margin-bottom: 8px; font-size: 12.5px; }
+  .t-url { color: var(--blue); }
+  .t-blank { height: 8px; }
+
+  /* ── ANALOGY ── */
+  .analogy-grid { display: grid; grid-template-columns: repeat(3,1fr); gap: 16px; margin-top: 40px; }
+  .analogy-card {
+    background: var(--bg2); border: 1px solid var(--border);
+    border-radius: 14px; padding: 28px 24px; text-align: center;
+    transition: all .2s;
+  }
+  .analogy-card:hover { border-color: var(--border-bright); transform: translateY(-2px); }
+  .analogy-emoji { font-size: 40px; margin-bottom: 16px; }
+  .analogy-title { font-weight: 700; font-size: 15px; margin-bottom: 8px; }
+  .analogy-desc { font-size: 13px; color: var(--off); line-height: 1.6; }
+  .analogy-arrow { font-size: 24px; color: var(--dim); display:flex; align-items:center; justify-content:center; }
+
+  /* ── LIVE DEMO ── */
+  .demo-section {
+    background: var(--bg2); border: 1px solid var(--border);
+    border-radius: 20px; padding: 40px; margin-top: 40px;
+  }
+  .demo-title { font-family:'Syne',sans-serif; font-size: 22px; font-weight: 800; margin-bottom: 8px; }
+  .demo-sub { color: var(--off); font-size: 14px; margin-bottom: 28px; }
+  .demo-flow {
+    display: flex; align-items: center; gap: 0; flex-wrap: wrap;
+  }
+  .demo-node {
+    background: var(--bg3); border: 1px solid var(--border);
+    border-radius: 12px; padding: 16px 20px; text-align: center;
+    flex: 1; min-width: 140px; position: relative;
+  }
+  .demo-node.highlight { border-color: var(--green); background: var(--green-dim); }
+  .demo-node-icon { font-size: 24px; margin-bottom: 8px; }
+  .demo-node-label { font-size: 12px; font-weight: 600; color: var(--off); margin-bottom: 4px; }
+  .demo-node-val { font-size: 13px; font-weight: 700; font-family:'JetBrains Mono',monospace; }
+  .demo-connector {
+    flex-shrink: 0; padding: 0 8px;
+    display: flex; flex-direction: column; align-items: center; gap: 4px;
+  }
+  .conn-line { width: 40px; height: 2px; background: var(--border-bright); position: relative; }
+  .conn-line::after {
+    content: '▶'; position: absolute; right: -8px; top: -8px;
+    font-size: 10px; color: var(--off);
+  }
+  .conn-label { font-size: 10px; color: var(--dim); white-space: nowrap; }
+
+  .status-bar {
+    display: flex; gap: 10px; margin-top: 20px; flex-wrap: wrap;
+  }
+  .status-item {
+    display: flex; align-items: center; gap: 8px;
+    background: var(--bg3); border: 1px solid var(--border);
+    border-radius: 8px; padding: 8px 14px; font-size: 12px;
+  }
+  .status-dot { width:8px; height:8px; border-radius:50%; }
+  .status-dot.green { background:var(--green); }
+  .status-dot.blue { background:var(--blue); }
+  .status-dot.purple { background:var(--purple); }
+
+  /* ── FAQ ── */
+  .faq-list { margin-top: 40px; display: flex; flex-direction: column; gap: 12px; }
+  .faq-item {
+    background: var(--bg2); border: 1px solid var(--border);
+    border-radius: 12px; overflow: hidden;
+  }
+  .faq-q {
+    padding: 20px 24px; font-weight: 600; font-size: 15px;
+    cursor: pointer; display: flex; justify-content: space-between; align-items: center;
+    transition: background .15s; user-select: none;
+  }
+  .faq-q:hover { background: var(--bg3); }
+  .faq-icon { color: var(--dim); transition: transform .2s; font-size: 18px; }
+  .faq-item.open .faq-icon { transform: rotate(45deg); color: var(--blue); }
+  .faq-a {
+    padding: 0 24px; max-height: 0; overflow: hidden;
+    transition: all .25s ease; color: var(--off); font-size: 14px; line-height: 1.7;
+  }
+  .faq-item.open .faq-a { max-height: 200px; padding: 0 24px 20px; }
+
+  /* ── FOOTER ── */
+  footer {
+    border-top: 1px solid var(--border); padding: 40px 24px;
+    text-align: center; color: var(--dim); font-size: 13px;
+  }
+  footer span { color: var(--off); }
+
+  /* ── SCROLL INDICATOR ── */
+  .scroll-hint {
+    position: absolute; bottom: 32px; left: 50%; transform: translateX(-50%);
+    display: flex; flex-direction: column; align-items: center; gap: 8px;
+    color: var(--dim); font-size: 12px; animation: bounce 2s infinite;
+  }
+  @keyframes bounce { 0%,100%{transform:translateX(-50%) translateY(0)} 50%{transform:translateX(-50%) translateY(6px)} }
+
+  @media(max-width:768px) {
+    .two-cols { grid-template-columns:1fr; }
+    .analogy-grid { grid-template-columns:1fr; }
+    .flow-steps { flex-direction:column; }
+    .flow-arrow { transform:rotate(90deg); align-self:center; }
+    .demo-flow { flex-direction:column; }
+    .conn-line { width:2px; height:30px; }
+    .conn-line::after { content:'▼'; right:-6px; bottom:-8px; top:auto; }
+  }
+</style>
+</head>
+<body>
+
+<!-- HERO -->
+<div class="hero">
+  <div class="hero-grid"></div>
+  <div class="hero-glow"></div>
+
+  <div class="hero-badge">
+    <span class="badge-dot"></span>
+    Learn by doing — no fluff
+  </div>
+
+  <h1>
+    GitHub saves it.<br>
+    <span class="line2">Vercel serves it.</span>
+  </h1>
+
+  <p class="hero-sub">
+    A visual, interactive guide to understanding how GitHub and Vercel work together to host your website — for free, automatically, forever.
+  </p>
+
+  <div class="hero-cta">
+    <button class="btn-primary" onclick="document.getElementById('what').scrollIntoView({behavior:'smooth'})">
+      Start Learning ↓
+    </button>
+    <button class="btn-ghost" onclick="document.getElementById('flow').scrollIntoView({behavior:'smooth'})">
+      See the Flow
+    </button>
+  </div>
+
+  <div class="scroll-hint">
+    <span>scroll to explore</span>
+    <span>↓</span>
+  </div>
+</div>
+
+<!-- WHAT IS WHAT -->
+<section id="what">
+  <div class="section-label">The Two Tools</div>
+  <h2 class="section-title">Two tools, one job each</h2>
+  <p class="section-sub">Think of them as two specialists who work together. Each one does exactly one thing — and they do it perfectly.</p>
+
+  <div class="two-cols">
+    <div class="tool-card github">
+      <div class="tool-logo gh">🐙</div>
+      <div class="tool-name">GitHub</div>
+      <div class="tool-role gh">Your Code Safe</div>
+      <p class="tool-desc">GitHub is where your code lives. It's like Google Drive — but specifically designed for code files. Every time you save a change, GitHub remembers the full history.</p>
+      <div class="tool-points">
+        <div class="tool-point"><span class="icon">📁</span><span>Stores all your HTML, CSS, JS files</span></div>
+        <div class="tool-point"><span class="icon">🕐</span><span>Keeps history of every change you ever made</span></div>
+        <div class="tool-point"><span class="icon">🔒</span><span>Your code is safe even if your computer breaks</span></div>
+        <div class="tool-point"><span class="icon">🤝</span><span>Lets Vercel watch for changes automatically</span></div>
+      </div>
+    </div>
+
+    <div class="tool-card vercel">
+      <div class="tool-logo vc">▲</div>
+      <div class="tool-name">Vercel</div>
+      <div class="tool-role vc">Your Publisher</div>
+      <p class="tool-desc">Vercel takes your code from GitHub and puts it live on the internet. It gives you a real URL that anyone in the world can visit. Instantly. For free.</p>
+      <div class="tool-points">
+        <div class="tool-point"><span class="icon">🌍</span><span>Makes your site live at a public URL</span></div>
+        <div class="tool-point"><span class="icon">⚡</span><span>Deploys in under 30 seconds automatically</span></div>
+        <div class="tool-point"><span class="icon">🔐</span><span>Gives you free HTTPS (the padlock in browser)</span></div>
+        <div class="tool-point"><span class="icon">👁</span><span>Watches GitHub — updates site when you push</span></div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ANALOGY -->
+<section>
+  <div class="section-label">Simple Analogy</div>
+  <h2 class="section-title">Think of it like a book</h2>
+  <p class="section-sub">If you've ever published anything, this will click immediately.</p>
+
+  <div class="analogy-grid">
+    <div class="analogy-card">
+      <div class="analogy-emoji">✍️</div>
+      <div class="analogy-title">You — The Author</div>
+      <div class="analogy-desc">You write the content. You make changes. You decide when it's ready to publish.</div>
+    </div>
+    <div class="analogy-card">
+      <div class="analogy-emoji">📚</div>
+      <div class="analogy-title">GitHub — The Manuscript</div>
+      <div class="analogy-desc">GitHub stores every draft. Every edit. You can go back to any version at any time. Nothing is ever lost.</div>
+    </div>
+    <div class="analogy-card">
+      <div class="analogy-emoji">🏪</div>
+      <div class="analogy-title">Vercel — The Bookstore</div>
+      <div class="analogy-desc">Vercel puts your book on the shelf so anyone can find it. The moment you send a new draft, the shelf updates automatically.</div>
+    </div>
+  </div>
+</section>
+
+<!-- FLOW -->
+<div class="flow-section" id="flow">
+  <div>
+    <div class="section-label">The Exact Process</div>
+    <h2 class="section-title">What happens step by step</h2>
+    <p class="section-sub">Click each step to understand exactly what's happening behind the scenes.</p>
+
+    <div class="flow-steps" style="margin-top:40px">
+
+      <div class="flow-step active" onclick="showDetail(0)">
+        <div class="step-num">01</div>
+        <div class="step-icon">💻</div>
+        <div class="step-title">You write code</div>
+        <div class="step-desc">Edit index.html on your computer in any text editor</div>
+        <span class="step-tag tag-you">You do this</span>
+      </div>
+
+      <div class="flow-arrow">→</div>
+
+      <div class="flow-step" onclick="showDetail(1)">
+        <div class="step-num">02</div>
+        <div class="step-icon">⬆️</div>
+        <div class="step-title">Push to GitHub</div>
+        <div class="step-desc">Upload your files to GitHub — drag & drop or one command</div>
+        <span class="step-tag tag-you">You do this</span>
+      </div>
+
+      <div class="flow-arrow">→</div>
+
+      <div class="flow-step" onclick="showDetail(2)">
+        <div class="step-num">03</div>
+        <div class="step-icon">👁</div>
+        <div class="step-title">Vercel detects it</div>
+        <div class="step-desc">Vercel is watching your repo 24/7 and sees the new push instantly</div>
+        <span class="step-tag tag-auto">Automatic</span>
+      </div>
+
+      <div class="flow-arrow">→</div>
+
+      <div class="flow-step" onclick="showDetail(3)">
+        <div class="step-num">04</div>
+        <div class="step-icon">⚙️</div>
+        <div class="step-title">Vercel builds</div>
+        <div class="step-desc">Vercel grabs your files and prepares them for the internet</div>
+        <span class="step-tag tag-auto">Automatic</span>
+      </div>
+
+      <div class="flow-arrow">→</div>
+
+      <div class="flow-step" onclick="showDetail(4)">
+        <div class="step-num">05</div>
+        <div class="step-icon">🌍</div>
+        <div class="step-title">Site is live!</div>
+        <div class="step-desc">Your URL is updated. Anyone can visit it right now, worldwide</div>
+        <span class="step-tag tag-auto">Automatic</span>
+      </div>
+
+    </div>
+
+    <!-- Detail panels -->
+    <div class="detail-panel show" id="detail-0">
+      <h4>💻 Step 1 — You write code on your computer</h4>
+      <p>Open your <code style="background:rgba(255,255,255,0.1);padding:2px 6px;border-radius:4px">index.html</code> in Notepad, VS Code, or any text editor. Make your changes — change a color, add a button, fix a typo. Save the file normally with Ctrl+S. That's it for your part here. Your file only exists on your computer at this point — nobody else can see it yet.</p>
+    </div>
+    <div class="detail-panel" id="detail-1">
+      <h4>⬆️ Step 2 — Push your files to GitHub</h4>
+      <p>Go to your GitHub repo in the browser → click <strong>Add file → Upload files</strong> → drag your updated <code style="background:rgba(255,255,255,0.1);padding:2px 6px;border-radius:4px">index.html</code> → click <strong>Commit changes</strong>. GitHub now stores your new version. This is called a "push" or "commit." GitHub keeps this version forever alongside all your previous ones.</p>
+    </div>
+    <div class="detail-panel" id="detail-2">
+      <h4>👁 Step 3 — Vercel detects the change</h4>
+      <p>The moment you commit to GitHub, Vercel receives an automatic notification called a "webhook." You don't do anything — Vercel is always watching your repository 24 hours a day, 7 days a week. Within 1-2 seconds of your commit, Vercel starts its deployment process automatically.</p>
+    </div>
+    <div class="detail-panel" id="detail-3">
+      <h4>⚙️ Step 4 — Vercel builds and deploys</h4>
+      <p>Vercel pulls your latest code from GitHub, processes it (for a plain HTML site this is instant — no build step needed), and distributes it across its global network of servers in cities around the world. This takes about 10-30 seconds. You can watch the live build log in your Vercel dashboard.</p>
+    </div>
+    <div class="detail-panel" id="detail-4">
+      <h4>🌍 Step 5 — Your site is live worldwide</h4>
+      <p>Your URL (like <code style="background:rgba(255,255,255,0.1);padding:2px 6px;border-radius:4px">yoursite.vercel.app</code>) now serves your latest code. Someone in India, USA, or Japan all get the same fast experience because Vercel serves from the nearest server to them. The old version is replaced instantly. Every future push repeats this cycle automatically.</p>
+    </div>
+
+  </div>
+</div>
+
+<!-- TERMINAL -->
+<section>
+  <div class="section-label">The Commands (Optional)</div>
+  <h2 class="section-title">What this looks like in code</h2>
+  <p class="section-sub">You don't need these — you can use GitHub's website. But this is what's happening under the hood, and many developers prefer typing these 3 lines.</p>
+
+  <div class="terminal-section">
+    <div class="terminal">
+      <div class="terminal-bar">
+        <div class="dot r"></div><div class="dot y"></div><div class="dot g"></div>
+        <span class="terminal-title">Terminal — Your Computer</span>
+      </div>
+      <div class="terminal-body">
+        <div class="t-line"><span class="t-prompt">$</span><span class="t-cmd t-comment"># One time setup — connect your folder to GitHub</span></div>
+        <div class="t-line"><span class="t-prompt">$</span><span class="t-cmd">git init</span></div>
+        <div class="t-output">Initialized empty Git repository</div>
+        <div class="t-line"><span class="t-prompt">$</span><span class="t-cmd">git remote add origin https://github.com/you/yoursite.git</span></div>
+        <div class="t-blank"></div>
+
+        <div class="t-line"><span class="t-prompt">$</span><span class="t-cmd t-comment"># Every time you make changes — these 3 lines deploy your site</span></div>
+        <div class="t-line"><span class="t-prompt">$</span><span class="t-cmd">git add .</span></div>
+        <div class="t-output">↳ Stages all your changed files</div>
+        <div class="t-line"><span class="t-prompt">$</span><span class="t-cmd">git commit -m "updated the homepage"</span></div>
+        <div class="t-output">↳ Saves a snapshot with your message</div>
+        <div class="t-line"><span class="t-prompt">$</span><span class="t-cmd">git push</span></div>
+        <div class="t-output">↳ Sends to GitHub → Vercel auto-deploys → site is live</div>
+        <div class="t-blank"></div>
+        <div class="t-success">✓ Deployed to <span class="t-url">https://yoursite.vercel.app</span> in 18s</div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- LIVE STATUS DEMO -->
+<section>
+  <div class="section-label">Visual Flow</div>
+  <h2 class="section-title">What Vercel sees when you push</h2>
+  <p class="section-sub">This is what happens inside Vercel's system the moment you click "Commit changes" on GitHub.</p>
+
+  <div class="demo-section">
+    <div class="demo-title">Deployment Pipeline</div>
+    <div class="demo-sub">Timeline: 0 seconds → ~20 seconds → Live</div>
+
+    <div class="demo-flow">
+      <div class="demo-node">
+        <div class="demo-node-icon">🐙</div>
+        <div class="demo-node-label">GitHub</div>
+        <div class="demo-node-val">Commit received</div>
+      </div>
+      <div class="demo-connector">
+        <div class="conn-line"></div>
+        <div class="conn-label">webhook</div>
+      </div>
+      <div class="demo-node">
+        <div class="demo-node-icon">📥</div>
+        <div class="demo-node-label">Vercel</div>
+        <div class="demo-node-val">Pulling code</div>
+      </div>
+      <div class="demo-connector">
+        <div class="conn-line"></div>
+        <div class="conn-label">~5s</div>
+      </div>
+      <div class="demo-node">
+        <div class="demo-node-icon">⚙️</div>
+        <div class="demo-node-label">Build</div>
+        <div class="demo-node-val">Processing</div>
+      </div>
+      <div class="demo-connector">
+        <div class="conn-line"></div>
+        <div class="conn-label">~10s</div>
+      </div>
+      <div class="demo-node">
+        <div class="demo-node-icon">🌐</div>
+        <div class="demo-node-label">CDN</div>
+        <div class="demo-node-val">Distributing</div>
+      </div>
+      <div class="demo-connector">
+        <div class="conn-line"></div>
+        <div class="conn-label">~5s</div>
+      </div>
+      <div class="demo-node highlight">
+        <div class="demo-node-icon">✅</div>
+        <div class="demo-node-label">Your Site</div>
+        <div class="demo-node-val">Live!</div>
+      </div>
+    </div>
+
+    <div class="status-bar">
+      <div class="status-item"><div class="status-dot green"></div> Free forever on Vercel hobby plan</div>
+      <div class="status-item"><div class="status-dot blue"></div> HTTPS included automatically</div>
+      <div class="status-item"><div class="status-dot purple"></div> Unlimited deployments</div>
+    </div>
+  </div>
+</section>
+
+<!-- FAQ -->
+<section>
+  <div class="section-label">Common Questions</div>
+  <h2 class="section-title">Things people always ask</h2>
+
+  <div class="faq-list">
+    <div class="faq-item open">
+      <div class="faq-q" onclick="toggleFaq(this)">
+        Do I need to pay for any of this?
+        <span class="faq-icon">+</span>
+      </div>
+      <div class="faq-a">No. GitHub is free for public and private repos. Vercel's Hobby plan is completely free and includes unlimited deployments, HTTPS, and a vercel.app subdomain. You only pay if you need a custom domain (like yourname.com) or enterprise features.</div>
+    </div>
+    <div class="faq-item">
+      <div class="faq-q" onclick="toggleFaq(this)">
+        What happens if I push bad code — does my site break?
+        <span class="faq-icon">+</span>
+      </div>
+      <div class="faq-a">Vercel keeps your previous deployment running until the new one succeeds. If your build fails, the old version stays live and you get an email. You can also click "Rollback" in Vercel's dashboard to instantly go back to any previous version.</div>
+    </div>
+    <div class="faq-item">
+      <div class="faq-q" onclick="toggleFaq(this)">
+        Can I use a custom domain like mysite.com?
+        <span class="faq-icon">+</span>
+      </div>
+      <div class="faq-a">Yes! In Vercel → your project → Settings → Domains → add your domain. You'll need to buy the domain from somewhere like Namecheap or GoDaddy (usually $10-15/year), then point it to Vercel. Vercel handles the HTTPS certificate for free automatically.</div>
+    </div>
+    <div class="faq-item">
+      <div class="faq-q" onclick="toggleFaq(this)">
+        Do I need to install anything on my computer?
+        <span class="faq-icon">+</span>
+      </div>
+      <div class="faq-a">No! For a basic HTML/CSS/JS site, you can upload files directly through GitHub's website (drag and drop). No terminal, no Git installation needed. Just browser → GitHub → drag file → commit → Vercel deploys automatically.</div>
+    </div>
+    <div class="faq-item">
+      <div class="faq-q" onclick="toggleFaq(this)">
+        What's the difference between GitHub and Vercel exactly?
+        <span class="faq-icon">+</span>
+      </div>
+      <div class="faq-a">GitHub = storage (like a hard drive in the cloud for code). Vercel = publisher (turns that stored code into a live website). You need both because storing code and serving it to millions of users are two very different technical problems.</div>
+    </div>
+  </div>
+</section>
+
+<!-- NEXT STEPS -->
+<section style="padding-bottom:100px">
+  <div class="section-label">You're ready</div>
+  <h2 class="section-title">Now apply this to your app</h2>
+  <p class="section-sub">You now understand the full loop. Here's exactly what we'll do next for your customer management app.</p>
+
+  <div style="margin-top:32px;display:flex;flex-direction:column;gap:12px;max-width:600px">
+    <div style="display:flex;gap:16px;align-items:flex-start;background:var(--bg2);border:1px solid var(--border);border-radius:12px;padding:20px 24px">
+      <span style="font-size:24px;flex-shrink:0">1️⃣</span>
+      <div>
+        <div style="font-weight:600;margin-bottom:4px">Push frontend to GitHub</div>
+        <div style="font-size:13px;color:var(--off)">Upload your index.html to a GitHub repo — same drag & drop process</div>
+      </div>
+    </div>
+    <div style="display:flex;gap:16px;align-items:flex-start;background:var(--bg2);border:1px solid var(--border);border-radius:12px;padding:20px 24px">
+      <span style="font-size:24px;flex-shrink:0">2️⃣</span>
+      <div>
+        <div style="font-weight:600;margin-bottom:4px">Connect repo to Vercel</div>
+        <div style="font-size:13px;color:var(--off)">Import your GitHub repo in Vercel — frontend is live at yoursite.vercel.app</div>
+      </div>
+    </div>
+    <div style="display:flex;gap:16px;align-items:flex-start;background:var(--bg2);border:1px solid var(--border);border-radius:12px;padding:20px 24px">
+      <span style="font-size:24px;flex-shrink:0">3️⃣</span>
+      <div>
+        <div style="font-weight:600;margin-bottom:4px">Add backend as Vercel Function</div>
+        <div style="font-size:13px;color:var(--off)">Your FastAPI backend lives in the same repo — no Railway needed at all</div>
+      </div>
+    </div>
+    <div style="display:flex;gap:16px;align-items:flex-start;background:var(--bg2);border:1px solid var(--border-bright);border-radius:12px;padding:20px 24px;border-left:3px solid var(--green)">
+      <span style="font-size:24px;flex-shrink:0">✅</span>
+      <div>
+        <div style="font-weight:600;margin-bottom:4px;color:var(--green)">One URL, everything works</div>
+        <div style="font-size:13px;color:var(--off)">Frontend + backend + DB all connected. Push to GitHub = site updates in 20 seconds.</div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<footer>
+  Built to explain the GitHub + Vercel workflow · <span>Ready to deploy your real app? Just say the word.</span>
+</footer>
+
+<script>
+function showDetail(n) {
+  document.querySelectorAll('.flow-step').forEach((s,i) => {
+    s.classList.toggle('active', i === n*2);
+  });
+  document.querySelectorAll('.detail-panel').forEach((p,i) => {
+    p.classList.toggle('show', i === n);
+  });
+}
+
+function toggleFaq(el) {
+  const item = el.parentElement;
+  const isOpen = item.classList.contains('open');
+  document.querySelectorAll('.faq-item').forEach(f => f.classList.remove('open'));
+  if (!isOpen) item.classList.add('open');
+}
+</script>
+</body>
+</html>
